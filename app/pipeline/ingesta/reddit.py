@@ -22,22 +22,26 @@ class ConectorReddit:
     de esta Fuente falla (403 u otro error), se registra y se sigue con las
     demás en vez de tumbar el resto del rastreo.
 
-    El 429 (rate limit, verificado en el primer arranque real) es distinto
-    del 403: no es un bloqueo, así que se reintenta una vez con backoff antes
-    de rendirse.
+    El 429 (rate limit, verificado en el primer arranque real: Reddit limita
+    `search.rss` más agresivo de lo esperado en ráfaga) es distinto del 403:
+    no es un bloqueo, así que se reintenta con backoff exponencial antes de
+    rendirse. Al ser un rastreo diario (sin prisa), se prioriza la paciencia
+    sobre la velocidad.
     """
 
     def __init__(
         self,
         urls_new: list[str],
         consultas: list[dict],
-        pausa_segundos: float = 2.0,
-        reintentos_429: int = 1,
+        pausa_segundos: float = 5.0,
+        reintentos_429: int = 2,
+        backoff_inicial_segundos: float = 15.0,
     ):
         self.urls_new = urls_new
         self.consultas = consultas
         self.pausa_segundos = pausa_segundos
         self.reintentos_429 = reintentos_429
+        self.backoff_inicial_segundos = backoff_inicial_segundos
 
     def fetch(self) -> list[ItemCapturado]:
         items: list[ItemCapturado] = []
@@ -58,17 +62,15 @@ class ConectorReddit:
         return f"https://www.reddit.com/search.rss?q={q}&sort=new"
 
     def _fetch_feed(self, client: httpx.Client, url: str) -> list[ItemCapturado]:
-        intentos_restantes = self.reintentos_429 + 1
-        while intentos_restantes > 0:
-            intentos_restantes -= 1
+        for intento in range(self.reintentos_429 + 1):
             try:
                 respuesta = client.get(url)
             except httpx.HTTPError as exc:
                 logger.warning("Reddit: fallo de red en %s (%s)", url, exc)
                 return []
 
-            if respuesta.status_code == 429 and intentos_restantes > 0:
-                espera = self.pausa_segundos * 5
+            if respuesta.status_code == 429 and intento < self.reintentos_429:
+                espera = self.backoff_inicial_segundos * (2**intento)
                 logger.warning("Reddit: 429 (rate limit) en %s, reintento en %.0fs", url, espera)
                 time.sleep(espera)
                 continue

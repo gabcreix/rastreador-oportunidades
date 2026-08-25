@@ -55,7 +55,12 @@ def test_429_se_reintenta_y_no_se_da_por_vencido_a_la_primera(httpx_mock):
     httpx_mock.add_response(url=url, status_code=429)
     httpx_mock.add_response(url=url, text=SEARCH_FEED_XML)
 
-    conector = ConectorReddit(urls_new=[], consultas=[{"q": "algo", "scope": "global"}], pausa_segundos=0)
+    conector = ConectorReddit(
+        urls_new=[],
+        consultas=[{"q": "algo", "scope": "global"}],
+        pausa_segundos=0,
+        backoff_inicial_segundos=0,
+    )
     items = conector.fetch()
 
     assert [item.url_original for item in items] == ["https://reddit.com/post/2"]
@@ -67,8 +72,35 @@ def test_429_agota_reintentos_y_se_rinde(httpx_mock):
     httpx_mock.add_response(url=url, status_code=429)
 
     conector = ConectorReddit(
-        urls_new=[], consultas=[{"q": "algo", "scope": "global"}], pausa_segundos=0, reintentos_429=1
+        urls_new=[],
+        consultas=[{"q": "algo", "scope": "global"}],
+        pausa_segundos=0,
+        reintentos_429=1,
+        backoff_inicial_segundos=0,
     )
     items = conector.fetch()
 
     assert items == []
+
+
+def test_429_hace_backoff_exponencial(httpx_mock, monkeypatch):
+    url = ConectorReddit._url_busqueda({"q": "algo", "scope": "global"})
+    httpx_mock.add_response(url=url, status_code=429)
+    httpx_mock.add_response(url=url, status_code=429)
+    httpx_mock.add_response(url=url, text=SEARCH_FEED_XML)
+
+    esperas = []
+    monkeypatch.setattr("app.pipeline.ingesta.reddit.time.sleep", lambda s: esperas.append(s))
+
+    conector = ConectorReddit(
+        urls_new=[],
+        consultas=[{"q": "algo", "scope": "global"}],
+        pausa_segundos=0,
+        reintentos_429=2,
+        backoff_inicial_segundos=10,
+    )
+    items = conector.fetch()
+
+    assert [item.url_original for item in items] == ["https://reddit.com/post/2"]
+    # Dos backoffs (10s, 20s) + la pausa final de 0s tras la consulta.
+    assert esperas == [10, 20, 0]
