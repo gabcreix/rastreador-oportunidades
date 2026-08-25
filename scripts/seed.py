@@ -115,14 +115,18 @@ FUENTES = [
         "nombre": NOMBRE_APPLE,
         "tipo": "reseñas",
         # Descubrimiento por top charts (07-estrategia-consultas.md §8), no watchlist.
+        # paginas_resenas=1 y paises_resenas=["es"]: el primer arranque real dio
+        # 2602 Capturas de una sola pasada (10-25x el resto de fuentes), volumen
+        # que se traduciría directo en coste de IA en la Fase 5. Con 1 página
+        # (~50 reseñas/app) y solo el mercado ES ya se capta el pulso reciente.
         "config_acceso": json.dumps(
             {
                 "paises_charts": ["us", "es"],
                 "tipos_chart": ["top-free", "top-paid"],
                 "limite_chart": 50,
                 "generos_interes": ["6015", "6000", "6007", "6026", "6002"],
-                "paises_resenas": ["es", "us"],
-                "paginas_resenas": 2,
+                "paises_resenas": ["es"],
+                "paginas_resenas": 1,
             }
         ),
     },
