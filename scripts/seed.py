@@ -170,6 +170,12 @@ def seed(session: Session) -> None:
         existente = session.exec(select(Fuente).where(Fuente.nombre == datos["nombre"])).first()
         if existente is None:
             session.add(Fuente(activa=True, **datos))
+        else:
+            # Las fuentes se definen en código (F8 · gestión de fuentes es post-MVP):
+            # el código manda, así que cada re-siembra sincroniza tipo/config_acceso.
+            existente.tipo = datos["tipo"]
+            existente.config_acceso = datos["config_acceso"]
+            session.add(existente)
 
     session.commit()
 
