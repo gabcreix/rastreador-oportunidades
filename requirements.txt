@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+httpx
+feedparser
+jinja2
+python-multipart
+anthropic
+pydantic-settings
+langdetect
+pytest
+pytest-httpx
