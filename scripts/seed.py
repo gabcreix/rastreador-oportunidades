@@ -10,6 +10,15 @@ from sqlmodel import Session, select
 
 from app.db import engine, init_db
 from app.models import Area, Fuente, Perfil
+from app.pipeline.fuentes import (
+    NOMBRE_APPLE,
+    NOMBRE_GOOGLE_NEWS,
+    NOMBRE_HACKERNEWS,
+    NOMBRE_PRENSA,
+    NOMBRE_PRODUCT_HUNT,
+    NOMBRE_REDDIT_IDEAS,
+    NOMBRE_REDDIT_NEGOCIO,
+)
 
 AREAS_PERFIL = [
     "software",
@@ -27,43 +36,43 @@ AREAS_PERFIL = [
 # de conectores, cuando Gabriel elija las apps a vigilar y las consultas.
 FUENTES = [
     {
-        "nombre": "Reddit — ideas",
+        "nombre": NOMBRE_REDDIT_IDEAS,
         "tipo": "foro",
         "config_acceso": json.dumps(
             {"urls": ["https://www.reddit.com/r/SomebodyMakeThis+AppIdeas+Lightbulb/new.rss"]}
         ),
     },
     {
-        "nombre": "Reddit — negocio/SaaS",
+        "nombre": NOMBRE_REDDIT_NEGOCIO,
         "tipo": "foro",
         "config_acceso": json.dumps(
             {"urls": ["https://www.reddit.com/r/SaaS+Entrepreneur+smallbusiness/new.rss"]}
         ),
     },
     {
-        "nombre": "Hacker News — Ask + Show",
+        "nombre": NOMBRE_HACKERNEWS,
         "tipo": "foro",
         "config_acceso": json.dumps({"urls": ["https://hnrss.org/ask", "https://hnrss.org/show"]}),
     },
     {
-        "nombre": "Apple App Store — reseñas",
+        "nombre": NOMBRE_APPLE,
         "tipo": "reseñas",
-        "config_acceso": json.dumps({"urls": [], "app_ids": [], "paises": ["es"]}),
+        "config_acceso": json.dumps({"app_ids": [], "paises": ["es"]}),
     },
     {
-        "nombre": "Google News — búsquedas temáticas",
+        "nombre": NOMBRE_GOOGLE_NEWS,
         "tipo": "búsquedas",
         "config_acceso": json.dumps({"consultas": []}),
     },
     {
-        "nombre": "Prensa tech (TechCrunch + Xataka)",
+        "nombre": NOMBRE_PRENSA,
         "tipo": "prensa",
         "config_acceso": json.dumps(
             {"urls": ["https://techcrunch.com/feed/", "https://www.xataka.com/index.xml"]}
         ),
     },
     {
-        "nombre": "Product Hunt",
+        "nombre": NOMBRE_PRODUCT_HUNT,
         "tipo": "lanzamientos",
         "config_acceso": json.dumps({"urls": ["https://www.producthunt.com/feed"]}),
     },
