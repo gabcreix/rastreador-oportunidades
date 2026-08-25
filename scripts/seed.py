@@ -34,19 +34,76 @@ AREAS_PERFIL = [
 # feeds RSS que agrega esa Fuente). Apple y Google News llevan además claves
 # propias (app_ids/países, consultas) todavía vacías: se rellenan en la Fase 2
 # de conectores, cuando Gabriel elija las apps a vigilar y las consultas.
+# Catálogo de consultas de arranque (07-estrategia-consultas.md §6.1): 3 de
+# Reddit + 4 de Google News. E-RD-01/03 son globales (no atadas a un
+# subreddit) y se cuelgan de la Fuente "ideas"; E-RD-06 está acotada a los
+# subs de negocio/SaaS (+ startups) y se cuelga de esa Fuente.
+_CONSULTAS_REDDIT_IDEAS = [
+    {
+        "id": "E-RD-01",
+        "q": '("someone should build" OR "is there an app that" OR "why is there no" '
+        'OR "app that doesn\'t exist") self:true',
+        "scope": "global",
+    },
+    {
+        "id": "E-RD-03",
+        "q": '("alternative to" OR "sick of" OR "tired of" OR "there has to be a better way") self:true',
+        "scope": "global",
+    },
+]
+
+_CONSULTAS_REDDIT_NEGOCIO = [
+    {
+        "id": "E-RD-06",
+        "q": '("looking for a tool" OR "is there an app" OR "alternative to" OR "biggest pain point")',
+        "scope": "subreddit",
+        "subs": "SaaS+Entrepreneur+smallbusiness+startups",
+    },
+]
+
+_CONSULTAS_GOOGLE_NEWS = [
+    {
+        "id": "I-GN-A1",
+        "q": '"ingeniería de datos" OR "data engineering" OR "data pipeline" when:14d',
+        "idiomas": ["es-ES", "en-US"],
+    },
+    {
+        "id": "I-GN-A2",
+        "q": 'fintech OR "banca digital" OR neobanco OR "pagos digitales" when:14d',
+        "idiomas": ["es-ES", "en-US"],
+    },
+    {
+        "id": "I-GN-B1",
+        "q": "intitle:(normativa OR regulación OR ley OR reglamento) (pymes OR autónomos OR empresas) when:30d",
+        "idiomas": ["es-ES"],
+    },
+    {
+        "id": "E-GN-01",
+        "q": '("no existe una app" OR "falta una plataforma" OR "necesitamos una herramienta" '
+        'OR "nadie ha creado") when:30d',
+        "idiomas": ["es-ES"],
+    },
+]
+
 FUENTES = [
     {
         "nombre": NOMBRE_REDDIT_IDEAS,
         "tipo": "foro",
         "config_acceso": json.dumps(
-            {"urls": ["https://www.reddit.com/r/SomebodyMakeThis+AppIdeas+Lightbulb/new.rss"]}
+            {
+                "urls": ["https://www.reddit.com/r/SomebodyMakeThis+AppIdeas+Lightbulb/new.rss"],
+                "consultas": _CONSULTAS_REDDIT_IDEAS,
+            }
         ),
     },
     {
         "nombre": NOMBRE_REDDIT_NEGOCIO,
         "tipo": "foro",
         "config_acceso": json.dumps(
-            {"urls": ["https://www.reddit.com/r/SaaS+Entrepreneur+smallbusiness/new.rss"]}
+            {
+                "urls": ["https://www.reddit.com/r/SaaS+Entrepreneur+smallbusiness/new.rss"],
+                "consultas": _CONSULTAS_REDDIT_NEGOCIO,
+            }
         ),
     },
     {
@@ -57,12 +114,22 @@ FUENTES = [
     {
         "nombre": NOMBRE_APPLE,
         "tipo": "reseñas",
-        "config_acceso": json.dumps({"app_ids": [], "paises": ["es"]}),
+        # Descubrimiento por top charts (07-estrategia-consultas.md §8), no watchlist.
+        "config_acceso": json.dumps(
+            {
+                "paises_charts": ["us", "es"],
+                "tipos_chart": ["top-free", "top-paid"],
+                "limite_chart": 50,
+                "generos_interes": ["6015", "6000", "6007", "6026", "6002"],
+                "paises_resenas": ["es", "us"],
+                "paginas_resenas": 2,
+            }
+        ),
     },
     {
         "nombre": NOMBRE_GOOGLE_NEWS,
         "tipo": "búsquedas",
-        "config_acceso": json.dumps({"consultas": []}),
+        "config_acceso": json.dumps({"consultas": _CONSULTAS_GOOGLE_NEWS}),
     },
     {
         "nombre": NOMBRE_PRENSA,

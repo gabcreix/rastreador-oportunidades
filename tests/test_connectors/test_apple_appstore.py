@@ -1,10 +1,34 @@
 from app.pipeline.ingesta.apple_appstore import ConectorAppleAppStore
 
-URL_PAGINA_1 = "https://itunes.apple.com/es/rss/customerreviews/page=1/sortBy=mostRecent/id=999/json"
-URL_PAGINA_2 = "https://itunes.apple.com/es/rss/customerreviews/page=2/sortBy=mostRecent/id=999/json"
+URL_CHART = "https://rss.marketingtools.apple.com/api/v2/us/apps/top-free/2/apps.json"
+URL_RESENAS_1 = "https://itunes.apple.com/us/rss/customerreviews/page=1/sortBy=mostRecent/id=111/json"
+URL_RESENAS_2 = "https://itunes.apple.com/us/rss/customerreviews/page=2/sortBy=mostRecent/id=111/json"
 
 
-def test_apple_conector_para_al_agotar_resenas(httpx_mock):
+def _conector(**overrides):
+    kwargs = dict(
+        paises_charts=["us"],
+        tipos_chart=["top-free"],
+        limite_chart=2,
+        generos_interes=["6015"],
+        paises_resenas=["us"],
+        paginas_resenas=2,
+        pausa_segundos=0,
+    )
+    kwargs.update(overrides)
+    return ConectorAppleAppStore(**kwargs)
+
+
+def test_descubre_solo_apps_del_genero_de_interes_y_solo_resenas_negativas(httpx_mock):
+    chart = {
+        "feed": {
+            "results": [
+                {"id": "111", "name": "App Finanzas", "genres": [{"genreId": "6015"}]},
+                {"id": "222", "name": "App Juegos", "genres": [{"genreId": "6014"}]},
+                {"id": "333", "name": "App Sin Genero", "genres": []},
+            ]
+        }
+    }
     pagina_1 = {
         "feed": {
             "entry": [
@@ -16,32 +40,30 @@ def test_apple_conector_para_al_agotar_resenas(httpx_mock):
                 },
                 {
                     "id": {"label": "https://apple.com/review/2"},
-                    "title": {"label": "Meh"},
-                    "content": {"label": "Podría mejorar"},
-                    "im:rating": {"label": "3"},
+                    "title": {"label": "Genial"},
+                    "content": {"label": "Me encanta"},
+                    "im:rating": {"label": "5"},
                 },
             ]
         }
     }
-    # Página 2: solo metadata de la app, sin reseñas (sin "im:rating") -> corta aquí.
-    pagina_2 = {"feed": {"entry": [{"im:name": {"label": "La App"}}]}}
+    pagina_2 = {"feed": {"entry": [{"im:name": {"label": "meta de la app"}}]}}
 
-    httpx_mock.add_response(url=URL_PAGINA_1, json=pagina_1)
-    httpx_mock.add_response(url=URL_PAGINA_2, json=pagina_2)
+    httpx_mock.add_response(url=URL_CHART, json=chart)
+    httpx_mock.add_response(url=URL_RESENAS_1, json=pagina_1)
+    httpx_mock.add_response(url=URL_RESENAS_2, json=pagina_2)
 
-    conector = ConectorAppleAppStore(app_ids=["999"], paises=["es"], pausa_segundos=0)
-    items = conector.fetch()
+    items = _conector().fetch()
 
-    assert len(items) == 2
+    assert len(items) == 1
     assert items[0].url_original == "https://apple.com/review/1"
-    assert "Se cuelga siempre" in items[0].contenido_bruto
     assert "1★" in items[0].contenido_bruto
+    assert "Se cuelga siempre" in items[0].contenido_bruto
 
 
-def test_apple_conector_corta_en_403(httpx_mock):
-    httpx_mock.add_response(url=URL_PAGINA_1, status_code=403)
+def test_chart_roto_no_rompe_el_fetch(httpx_mock):
+    httpx_mock.add_response(url=URL_CHART, status_code=500)
 
-    conector = ConectorAppleAppStore(app_ids=["999"], paises=["es"], pausa_segundos=0)
-    items = conector.fetch()
+    items = _conector().fetch()
 
     assert items == []

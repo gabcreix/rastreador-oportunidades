@@ -13,6 +13,7 @@ from app.pipeline.fuentes import (
 from app.pipeline.ingesta.apple_appstore import ConectorAppleAppStore
 from app.pipeline.ingesta.base import Conector
 from app.pipeline.ingesta.google_news import ConectorGoogleNews
+from app.pipeline.ingesta.reddit import ConectorReddit
 from app.pipeline.ingesta.rss import ConectorRSS
 
 FUENTES_RSS_SIMPLES = {NOMBRE_HACKERNEWS, NOMBRE_PRODUCT_HUNT, NOMBRE_PRENSA}
@@ -29,11 +30,16 @@ def crear_conector(fuente: Fuente) -> Conector:
         return ConectorGoogleNews(config["consultas"])
 
     if fuente.nombre == NOMBRE_APPLE:
-        return ConectorAppleAppStore(config["app_ids"], config.get("paises", ["es"]))
+        return ConectorAppleAppStore(
+            paises_charts=config["paises_charts"],
+            tipos_chart=config["tipos_chart"],
+            limite_chart=config["limite_chart"],
+            generos_interes=config["generos_interes"],
+            paises_resenas=config["paises_resenas"],
+            paginas_resenas=config.get("paginas_resenas", 2),
+        )
 
     if fuente.nombre in FUENTES_REDDIT:
-        raise NotImplementedError(
-            "Conector de Reddit pendiente (Fase 3, aislado por el riesgo de 403 desde VPS)."
-        )
+        return ConectorReddit(urls_new=config["urls"], consultas=config.get("consultas", []))
 
     raise ValueError(f"No hay conector definido para la fuente {fuente.nombre!r}")

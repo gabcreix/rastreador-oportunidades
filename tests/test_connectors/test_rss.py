@@ -32,10 +32,20 @@ def test_conector_rss_extrae_titulo_y_resumen():
     assert items[1].url_original == "https://example.com/post/2"
 
 
-def test_conector_google_news_construye_urls_de_busqueda():
-    conector = ConectorGoogleNews(consultas=["ingeniería de datos", "fintech"])
+def test_conector_google_news_consulta_bilingue_lanza_dos_locales():
+    conector = ConectorGoogleNews(
+        consultas=[{"id": "I-GN-A1", "q": '"data engineering"', "idiomas": ["es-ES", "en-US"]}]
+    )
 
     assert len(conector.urls) == 2
-    assert conector.urls[0].startswith("https://news.google.com/rss/search?q=")
+    assert any("hl=es-ES" in u and "gl=ES" in u and "ceid=ES:es" in u for u in conector.urls)
+    assert any("hl=en-US" in u and "gl=US" in u and "ceid=US:en" in u for u in conector.urls)
+
+
+def test_conector_google_news_consulta_de_un_solo_idioma():
+    conector = ConectorGoogleNews(
+        consultas=[{"id": "E-GN-01", "q": '"no existe una app"', "idiomas": ["es-ES"]}]
+    )
+
+    assert len(conector.urls) == 1
     assert "hl=es-ES" in conector.urls[0]
-    assert "ceid=ES:es" in conector.urls[0]
