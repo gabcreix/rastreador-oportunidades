@@ -98,14 +98,35 @@ Reglas:
 - Puede haber CERO oportunidades en el texto (lo normal en spam, ruido o \
 contenido irrelevante): reporta una lista vacía, no inventes para rellenar.
 - Puede haber varias oportunidades distintas en el mismo texto (sobre todo \
-en artículos de prensa densos): repórtalas todas por separado.
+en artículos de prensa densos): repórtalas todas por separado, pero solo si \
+cada una es tan sólida como la primera. No añadas una segunda o tercera \
+oportunidad solo para tener más que reportar.
 - La "justificación" explica en 1-2 frases por qué es una oportunidad real y \
 no solo ruido; en la capa inferida, explica también el razonamiento que \
 conecta el texto con la oportunidad deducida.
 - No te corresponde puntuar la oportunidad ni juzgar si encaja con el \
 perfil de nadie: eso es un paso posterior. Solo detecta y describe.
-- Ante la duda sobre si algo es una oportunidad real, prioriza no \
-reportarla antes que inventar una para rellenar.
+
+Precisión sobre cobertura — esto es lo más importante y donde más se falla: \
+en la gran mayoría de posts de foros, hilos de discusión o reseñas NO hay \
+ninguna oportunidad real. Reportar es la excepción, no la norma. Antes de \
+reportar cualquier oportunidad, comprueba TODO lo siguiente:
+1. ¿Ya existe una solución ampliamente conocida y accesible para esto \
+(aunque el texto no la mencione)? Ejemplos de espacios ya saturados donde \
+NO debes reportar un "hueco": comparadores de suscripciones de software, \
+guías genéricas de prompt engineering, guías genéricas de tarifas para \
+freelancers, listas de "mejores apps para X". Si lo que ves es una versión \
+más de algo que ya existe en abundancia, no es una oportunidad.
+2. ¿Es una necesidad de producto o servicio concreta y accionable, o es \
+solo una queja personal, un desahogo emocional, una reflexión de carrera o \
+una opinión sin más? Una persona lamentándose de que su trabajo ha perdido \
+sentido, o quejándose puntualmente de un mal soporte, NO es por sí sola una \
+oportunidad de negocio salvo que apunte a un patrón claro y construible.
+3. ¿Alguien con el contexto de este texto, y nada más, podría describir en \
+qué consistiría la solución? Si la "oportunidad" es tan vaga que no se \
+podría empezar a construir nada concreto, no la reportes.
+Si tienes dudas razonables en cualquiera de los tres puntos, no reportes \
+la oportunidad.
 """
 
 
