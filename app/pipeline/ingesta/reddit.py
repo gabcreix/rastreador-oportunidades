@@ -21,12 +21,23 @@ class ConectorReddit:
     datacenter/VPS. Mitigación: User-Agent propio y ritmo bajo; si una URL
     de esta Fuente falla (403 u otro error), se registra y se sigue con las
     demás en vez de tumbar el resto del rastreo.
+
+    El 429 (rate limit, verificado en el primer arranque real) es distinto
+    del 403: no es un bloqueo, así que se reintenta una vez con backoff antes
+    de rendirse.
     """
 
-    def __init__(self, urls_new: list[str], consultas: list[dict], pausa_segundos: float = 2.0):
+    def __init__(
+        self,
+        urls_new: list[str],
+        consultas: list[dict],
+        pausa_segundos: float = 2.0,
+        reintentos_429: int = 1,
+    ):
         self.urls_new = urls_new
         self.consultas = consultas
         self.pausa_segundos = pausa_segundos
+        self.reintentos_429 = reintentos_429
 
     def fetch(self) -> list[ItemCapturado]:
         items: list[ItemCapturado] = []
@@ -47,20 +58,31 @@ class ConectorReddit:
         return f"https://www.reddit.com/search.rss?q={q}&sort=new"
 
     def _fetch_feed(self, client: httpx.Client, url: str) -> list[ItemCapturado]:
-        try:
-            respuesta = client.get(url)
-        except httpx.HTTPError as exc:
-            logger.warning("Reddit: fallo de red en %s (%s)", url, exc)
-            return []
+        intentos_restantes = self.reintentos_429 + 1
+        while intentos_restantes > 0:
+            intentos_restantes -= 1
+            try:
+                respuesta = client.get(url)
+            except httpx.HTTPError as exc:
+                logger.warning("Reddit: fallo de red en %s (%s)", url, exc)
+                return []
 
-        if respuesta.status_code == 403:
-            logger.warning("Reddit: 403 (bloqueo por IP de datacenter) en %s", url)
-            return []
-        if respuesta.status_code >= 400:
-            logger.warning("Reddit: HTTP %s en %s", respuesta.status_code, url)
-            return []
+            if respuesta.status_code == 429 and intentos_restantes > 0:
+                espera = self.pausa_segundos * 5
+                logger.warning("Reddit: 429 (rate limit) en %s, reintento en %.0fs", url, espera)
+                time.sleep(espera)
+                continue
 
-        items = items_desde_feed(feedparser.parse(respuesta.content))
-        if not items:
-            logger.info("Reddit: 0 items (HTTP 200, feed vacío, no bloqueado) en %s", url)
-        return items
+            if respuesta.status_code == 403:
+                logger.warning("Reddit: 403 (bloqueo por IP de datacenter) en %s", url)
+                return []
+            if respuesta.status_code >= 400:
+                logger.warning("Reddit: HTTP %s en %s", respuesta.status_code, url)
+                return []
+
+            items = items_desde_feed(feedparser.parse(respuesta.content))
+            if not items:
+                logger.info("Reddit: 0 items (HTTP 200, feed vacío, no bloqueado) en %s", url)
+            return items
+
+        return []

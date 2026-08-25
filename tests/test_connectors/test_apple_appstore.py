@@ -67,3 +67,29 @@ def test_chart_roto_no_rompe_el_fetch(httpx_mock):
     items = _conector().fetch()
 
     assert items == []
+
+
+def test_pagina_con_una_sola_resena_no_rompe_el_parseo(httpx_mock):
+    # Apple devuelve `entry` como objeto suelto (no lista) cuando solo hay una
+    # reseña en la página: quirk real, verificado al probar contra la API viva.
+    chart = {"feed": {"results": [{"id": "111", "name": "App", "genres": [{"genreId": "6015"}]}]}}
+    pagina_1 = {
+        "feed": {
+            "entry": {
+                "id": {"label": "https://apple.com/review/1"},
+                "title": {"label": "Va fatal"},
+                "content": {"label": "Se cuelga siempre"},
+                "im:rating": {"label": "1"},
+            }
+        }
+    }
+    pagina_2 = {"feed": {"entry": {"im:name": {"label": "meta de la app"}}}}
+
+    httpx_mock.add_response(url=URL_CHART, json=chart)
+    httpx_mock.add_response(url=URL_RESENAS_1, json=pagina_1)
+    httpx_mock.add_response(url=URL_RESENAS_2, json=pagina_2)
+
+    items = _conector().fetch()
+
+    assert len(items) == 1
+    assert items[0].url_original == "https://apple.com/review/1"

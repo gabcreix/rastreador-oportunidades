@@ -48,3 +48,27 @@ def test_fetch_combina_new_y_busquedas_y_un_403_no_tumba_el_resto(httpx_mock):
 
     urls = {item.url_original for item in items}
     assert urls == {"https://reddit.com/post/1", "https://reddit.com/post/2"}
+
+
+def test_429_se_reintenta_y_no_se_da_por_vencido_a_la_primera(httpx_mock):
+    url = ConectorReddit._url_busqueda({"q": "algo", "scope": "global"})
+    httpx_mock.add_response(url=url, status_code=429)
+    httpx_mock.add_response(url=url, text=SEARCH_FEED_XML)
+
+    conector = ConectorReddit(urls_new=[], consultas=[{"q": "algo", "scope": "global"}], pausa_segundos=0)
+    items = conector.fetch()
+
+    assert [item.url_original for item in items] == ["https://reddit.com/post/2"]
+
+
+def test_429_agota_reintentos_y_se_rinde(httpx_mock):
+    url = ConectorReddit._url_busqueda({"q": "algo", "scope": "global"})
+    httpx_mock.add_response(url=url, status_code=429)
+    httpx_mock.add_response(url=url, status_code=429)
+
+    conector = ConectorReddit(
+        urls_new=[], consultas=[{"q": "algo", "scope": "global"}], pausa_segundos=0, reintentos_429=1
+    )
+    items = conector.fetch()
+
+    assert items == []

@@ -81,6 +81,10 @@ class ConectorAppleAppStore:
                 break
 
             entradas = respuesta.json().get("feed", {}).get("entry", [])
+            # Si solo hay una entrada, Apple la devuelve como objeto suelto, no como
+            # lista de un elemento (quirk conocido de su conversión Atom→JSON).
+            if isinstance(entradas, dict):
+                entradas = [entradas]
             # La primera entrada de la primera página es metadata de la app, no una reseña.
             resenas = [entrada for entrada in entradas if "im:rating" in entrada]
             if not resenas:
