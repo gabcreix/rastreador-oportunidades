@@ -23,7 +23,11 @@ def main() -> None:
     init_db()
     with Session(engine) as session:
         capturas = session.exec(
-            select(Captura).join(Fuente).where(Fuente.nombre == nombre_fuente).limit(limite)
+            select(Captura)
+            .join(Fuente)
+            .where(Fuente.nombre == nombre_fuente)
+            .order_by(Captura.id.desc())
+            .limit(limite)
         ).all()
 
         if not capturas:
