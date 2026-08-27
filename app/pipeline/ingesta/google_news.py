@@ -1,3 +1,5 @@
+import html
+import re
 import time
 from urllib.parse import quote_plus
 
@@ -16,17 +18,26 @@ _LOCALES = {
 }
 
 MAX_CARACTERES_ARTICULO = 8000
+_TAG_HTML = re.compile(r"<[^>]+>")
+
+
+def _limpiar_html(texto: str) -> str:
+    """El `summary` de Google News trae HTML crudo (un enlace + la fuente en
+    <font>), no texto plano. Se usa solo como último recurso, si no se pudo
+    extraer el artículo."""
+    return html.unescape(_TAG_HTML.sub(" ", texto)).strip()
 
 
 class ConectorGoogleNews(ConectorRSS):
     """F1 · Google News — catálogo de consultas de búsqueda (`07-estrategia-consultas.md`).
 
-    Motor de la capa inferida (F2). El `summary` del feed es mínimo y el
-    `link` es una redirección de Google: para darle a la IA algo más que un
-    titular, se resuelve la redirección y se extrae el texto del artículo
-    (`articulo.py`). Si no se puede, cae al `summary` de siempre — nunca
-    bloquea el rastreo. Riesgo conocido: feed no documentado oficialmente
-    por Google, puede cambiar de formato sin aviso.
+    Motor de la capa inferida (F2). El `summary` del feed es mínimo y en HTML
+    crudo, y el `link` es una redirección de Google que no resuelve con un
+    simple `follow_redirects` (la resolución final la hace una llamada
+    interna de Google, no un 302 HTTP): se decodifica y se extrae el texto
+    del artículo (`articulo.py`). Si no se puede, cae al `summary` limpio de
+    HTML — nunca bloquea el rastreo. Riesgo conocido: feed no documentado
+    oficialmente por Google, puede cambiar de formato sin aviso.
     """
 
     def __init__(self, consultas: list[dict], pausa_segundos: float = 0.5):
@@ -52,12 +63,12 @@ class ConectorGoogleNews(ConectorRSS):
                 if not enlace or not (titulo or resumen):
                     continue
 
-                texto_articulo = resolver_y_extraer(enlace)
+                url_final, texto_articulo = resolver_y_extraer(enlace)
                 time.sleep(self.pausa_segundos)
-                cuerpo = texto_articulo[:MAX_CARACTERES_ARTICULO] if texto_articulo else resumen
+                cuerpo = texto_articulo[:MAX_CARACTERES_ARTICULO] if texto_articulo else _limpiar_html(resumen)
 
                 contenido = f"{titulo}\n\n{cuerpo}".strip()
                 if not contenido:
                     continue
-                items.append(ItemCapturado(url_original=enlace, contenido_bruto=contenido))
+                items.append(ItemCapturado(url_original=url_final, contenido_bruto=contenido))
         return items

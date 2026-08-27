@@ -9,5 +9,6 @@ anthropic
 pydantic-settings
 langdetect
 trafilatura
+googlenewsdecoder
 pytest
 pytest-httpx

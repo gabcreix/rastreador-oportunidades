@@ -54,7 +54,7 @@ def test_conector_google_news_consulta_de_un_solo_idioma():
 def test_conector_google_news_sustituye_el_resumen_por_el_articulo_completo(monkeypatch):
     monkeypatch.setattr(
         "app.pipeline.ingesta.google_news.resolver_y_extraer",
-        lambda url: "Texto completo del artículo, con mucho más detalle que el resumen.",
+        lambda url: (url, "Texto completo del artículo, con mucho más detalle que el resumen."),
     )
     conector = ConectorGoogleNews(consultas=[{"q": "x", "idiomas": ["es-ES"]}], pausa_segundos=0)
     conector.urls = [FEED_XML]
@@ -66,8 +66,23 @@ def test_conector_google_news_sustituye_el_resumen_por_el_articulo_completo(monk
     assert "Ojalá existiera una app que hiciera X" not in items[0].contenido_bruto
 
 
-def test_conector_google_news_cae_al_resumen_si_no_se_puede_extraer(monkeypatch):
-    monkeypatch.setattr("app.pipeline.ingesta.google_news.resolver_y_extraer", lambda url: None)
+def test_conector_google_news_usa_la_url_decodificada_como_url_original(monkeypatch):
+    monkeypatch.setattr(
+        "app.pipeline.ingesta.google_news.resolver_y_extraer",
+        lambda url: ("https://medio.example/real", "Texto del artículo."),
+    )
+    conector = ConectorGoogleNews(consultas=[{"q": "x", "idiomas": ["es-ES"]}], pausa_segundos=0)
+    conector.urls = [FEED_XML]
+
+    items = conector.fetch()
+
+    assert items[0].url_original == "https://medio.example/real"
+
+
+def test_conector_google_news_cae_al_resumen_limpio_si_no_se_puede_extraer(monkeypatch):
+    monkeypatch.setattr(
+        "app.pipeline.ingesta.google_news.resolver_y_extraer", lambda url: (url, None)
+    )
     conector = ConectorGoogleNews(consultas=[{"q": "x", "idiomas": ["es-ES"]}], pausa_segundos=0)
     conector.urls = [FEED_XML]
 
@@ -75,3 +90,29 @@ def test_conector_google_news_cae_al_resumen_si_no_se_puede_extraer(monkeypatch)
 
     assert len(items) == 2
     assert "Ojalá existiera una app que hiciera X" in items[0].contenido_bruto
+
+
+FEED_XML_HTML = """<?xml version="1.0"?>
+<rss version="2.0"><channel>
+<item>
+  <title>Un titular cualquiera</title>
+  <link>https://news.google.com/rss/articles/algo</link>
+  <description>&lt;a href="https://news.google.com/rss/articles/algo"&gt;Un titular cualquiera&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;font color="#6f6f6f"&gt;El Medio&lt;/font&gt;</description>
+</item>
+</channel></rss>
+"""
+
+
+def test_conector_google_news_limpia_el_html_del_resumen_de_fallback(monkeypatch):
+    monkeypatch.setattr(
+        "app.pipeline.ingesta.google_news.resolver_y_extraer", lambda url: (url, None)
+    )
+    conector = ConectorGoogleNews(consultas=[{"q": "x", "idiomas": ["es-ES"]}], pausa_segundos=0)
+    conector.urls = [FEED_XML_HTML]
+
+    items = conector.fetch()
+
+    assert len(items) == 1
+    assert "<a href" not in items[0].contenido_bruto
+    assert "<font" not in items[0].contenido_bruto
+    assert "El Medio" in items[0].contenido_bruto
