@@ -4,7 +4,8 @@ detectadas. No persiste nada todavía (eso llega con el scoring, Fase 6):
 esto es para revisar la calidad del prompt antes de escalarlo a todo el
 histórico.
 
-Uso: python -m scripts.detectar [n_capturas]   (por defecto 20)
+Uso: python -m scripts.detectar [n_capturas] ["nombre de la fuente"]
+     (n_capturas por defecto 20; sin fuente, coge de cualquiera)
 """
 
 import sys
@@ -12,20 +13,22 @@ import sys
 from sqlmodel import Session, select
 
 from app.db import engine, init_db
-from app.models import Captura, EstadoProcesamiento
+from app.models import Captura, EstadoProcesamiento, Fuente
 from app.pipeline.deteccion import DetectorAnthropic
 
 
 def main() -> None:
     limite = int(sys.argv[1]) if len(sys.argv) > 1 else 20
+    nombre_fuente = sys.argv[2] if len(sys.argv) > 2 else None
 
     init_db()
     detector = DetectorAnthropic()
 
     with Session(engine) as session:
-        capturas = session.exec(
-            select(Captura).where(Captura.estado_procesamiento == EstadoProcesamiento.PROCESADA).limit(limite)
-        ).all()
+        consulta = select(Captura).where(Captura.estado_procesamiento == EstadoProcesamiento.PROCESADA)
+        if nombre_fuente:
+            consulta = consulta.join(Fuente).where(Fuente.nombre == nombre_fuente)
+        capturas = session.exec(consulta.limit(limite)).all()
 
         total_candidatas = 0
         for captura in capturas:
