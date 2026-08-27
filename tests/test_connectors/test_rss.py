@@ -49,3 +49,29 @@ def test_conector_google_news_consulta_de_un_solo_idioma():
 
     assert len(conector.urls) == 1
     assert "hl=es-ES" in conector.urls[0]
+
+
+def test_conector_google_news_sustituye_el_resumen_por_el_articulo_completo(monkeypatch):
+    monkeypatch.setattr(
+        "app.pipeline.ingesta.google_news.resolver_y_extraer",
+        lambda url: "Texto completo del artículo, con mucho más detalle que el resumen.",
+    )
+    conector = ConectorGoogleNews(consultas=[{"q": "x", "idiomas": ["es-ES"]}], pausa_segundos=0)
+    conector.urls = [FEED_XML]
+
+    items = conector.fetch()
+
+    assert len(items) == 2
+    assert "Texto completo del artículo" in items[0].contenido_bruto
+    assert "Ojalá existiera una app que hiciera X" not in items[0].contenido_bruto
+
+
+def test_conector_google_news_cae_al_resumen_si_no_se_puede_extraer(monkeypatch):
+    monkeypatch.setattr("app.pipeline.ingesta.google_news.resolver_y_extraer", lambda url: None)
+    conector = ConectorGoogleNews(consultas=[{"q": "x", "idiomas": ["es-ES"]}], pausa_segundos=0)
+    conector.urls = [FEED_XML]
+
+    items = conector.fetch()
+
+    assert len(items) == 2
+    assert "Ojalá existiera una app que hiciera X" in items[0].contenido_bruto

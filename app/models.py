@@ -110,7 +110,10 @@ class Oportunidad(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     titulo: str
-    descripcion: str
+    descripcion: str  # la necesidad/dolor subyacente, sin solución (schema de valor v3)
+    solucion_propuesta: str = ""
+    evidencia_demanda: str = ""
+    solucion_existente: str = ""
     tipo: TipoOportunidad
     capa: CapaDeteccion
     estado: EstadoOportunidad = EstadoOportunidad.NUEVA

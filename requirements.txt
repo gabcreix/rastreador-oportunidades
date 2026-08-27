@@ -8,5 +8,6 @@ python-multipart
 anthropic
 pydantic-settings
 langdetect
+trafilatura
 pytest
 pytest-httpx

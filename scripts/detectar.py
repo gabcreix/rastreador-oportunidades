@@ -37,7 +37,12 @@ def main() -> None:
             print(f"  {captura.url_original}")
             for candidata in candidatas:
                 print(f"  · [{candidata.tipo.value}/{candidata.capa.value}] {candidata.titulo}")
-                print(f"    {candidata.descripcion}")
+                print(f"    Necesidad: {candidata.descripcion}")
+                if candidata.solucion_propuesta:
+                    print(f"    Solución propuesta: {candidata.solucion_propuesta}")
+                print(f"    Evidencia de demanda: {candidata.evidencia_demanda}")
+                if candidata.solucion_existente:
+                    print(f"    Solución existente: {candidata.solucion_existente}")
                 print(f"    Justificación: {candidata.justificacion}")
 
         print(f"\n{len(capturas)} Capturas analizadas, {total_candidatas} oportunidades candidatas detectadas.")

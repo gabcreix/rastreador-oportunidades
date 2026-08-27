@@ -3,29 +3,45 @@ from app.pipeline.deteccion import NOMBRE_HERRAMIENTA, DetectorAnthropic
 
 
 class _BloqueFalso:
-    def __init__(self, oportunidades):
+    def __init__(self, analisis_previo, oportunidades):
         self.type = "tool_use"
-        self.input = {"oportunidades": oportunidades}
+        self.input = {"analisis_previo": analisis_previo, "oportunidades": oportunidades}
 
 
 class _RespuestaFalsa:
-    def __init__(self, oportunidades):
-        self.content = [_BloqueFalso(oportunidades)]
+    def __init__(self, analisis_previo, oportunidades):
+        self.content = [_BloqueFalso(analisis_previo, oportunidades)]
 
 
 class _MensajesFalsos:
-    def __init__(self, oportunidades):
+    def __init__(self, oportunidades, analisis_previo=""):
         self._oportunidades = oportunidades
+        self._analisis_previo = analisis_previo
         self.ultima_llamada = None
 
     def create(self, **kwargs):
         self.ultima_llamada = kwargs
-        return _RespuestaFalsa(self._oportunidades)
+        return _RespuestaFalsa(self._analisis_previo, self._oportunidades)
 
 
 class _ClienteFalso:
-    def __init__(self, oportunidades):
-        self.messages = _MensajesFalsos(oportunidades)
+    def __init__(self, oportunidades, analisis_previo=""):
+        self.messages = _MensajesFalsos(oportunidades, analisis_previo)
+
+
+def _oportunidad(**overrides):
+    base = {
+        "titulo": "T",
+        "descripcion": "D",
+        "solucion_propuesta": "S",
+        "tipo": "hueco",
+        "capa": "inferida",
+        "evidencia_demanda": "E",
+        "solucion_existente": "",
+        "justificacion": "J",
+    }
+    base.update(overrides)
+    return base
 
 
 def _crear_captura(session):
@@ -43,33 +59,41 @@ def test_detector_parsea_oportunidades_detectadas(session):
     captura = _crear_captura(session)
     cliente_falso = _ClienteFalso(
         [
-            {
-                "titulo": "Buscador de empleo junior",
-                "descripcion": "Los jóvenes no encuentran su primer empleo.",
-                "tipo": "hueco",
-                "capa": "inferida",
-                "justificacion": "El artículo describe una escasez de ofertas junior.",
-            }
-        ]
+            _oportunidad(
+                titulo="Buscador de empleo junior",
+                descripcion="Los jóvenes no encuentran su primer empleo.",
+                solucion_propuesta="Bolsa de empleo filtrada a primer empleo.",
+                tipo="hueco",
+                capa="inferida",
+                evidencia_demanda="Reportaje describe fricción de un colectivo amplio.",
+                solucion_existente="Portales generalistas, no especializados.",
+            )
+        ],
+        analisis_previo="Se deduce un hueco concreto y construible.",
     )
     detector = DetectorAnthropic(client=cliente_falso, model="test-model")
 
     candidatas = detector.detectar(captura)
 
     assert len(candidatas) == 1
-    assert candidatas[0].titulo == "Buscador de empleo junior"
-    assert candidatas[0].tipo == TipoOportunidad.HUECO
-    assert candidatas[0].capa == CapaDeteccion.INFERIDA
+    candidata = candidatas[0]
+    assert candidata.titulo == "Buscador de empleo junior"
+    assert candidata.solucion_propuesta == "Bolsa de empleo filtrada a primer empleo."
+    assert candidata.evidencia_demanda == "Reportaje describe fricción de un colectivo amplio."
+    assert candidata.solucion_existente == "Portales generalistas, no especializados."
+    assert candidata.tipo == TipoOportunidad.HUECO
+    assert candidata.capa == CapaDeteccion.INFERIDA
 
     llamada = cliente_falso.messages.ultima_llamada
     assert llamada["model"] == "test-model"
+    assert llamada["max_tokens"] == 2048
     assert llamada["tool_choice"] == {"type": "tool", "name": NOMBRE_HERRAMIENTA}
     assert "Fuente: Test (prensa)" in llamada["messages"][0]["content"]
 
 
 def test_detector_sin_oportunidades_devuelve_lista_vacia(session):
     captura = _crear_captura(session)
-    cliente_falso = _ClienteFalso([])
+    cliente_falso = _ClienteFalso([], analisis_previo="Desahogo personal, no hay necesidad de producto. No reportar.")
     detector = DetectorAnthropic(client=cliente_falso, model="test-model")
 
     assert detector.detectar(captura) == []
@@ -79,20 +103,8 @@ def test_detector_varias_oportunidades_en_un_texto(session):
     captura = _crear_captura(session)
     cliente_falso = _ClienteFalso(
         [
-            {
-                "titulo": "A",
-                "descripcion": "da",
-                "tipo": "mejorar",
-                "capa": "explicita",
-                "justificacion": "ja",
-            },
-            {
-                "titulo": "B",
-                "descripcion": "db",
-                "tipo": "hueco",
-                "capa": "inferida",
-                "justificacion": "jb",
-            },
+            _oportunidad(titulo="A", tipo="mejorar", capa="explicita"),
+            _oportunidad(titulo="B", tipo="hueco", capa="inferida"),
         ]
     )
     detector = DetectorAnthropic(client=cliente_falso, model="test-model")
