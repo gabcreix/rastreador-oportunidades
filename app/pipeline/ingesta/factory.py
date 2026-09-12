@@ -20,14 +20,14 @@ FUENTES_RSS_SIMPLES = {NOMBRE_HACKERNEWS, NOMBRE_PRODUCT_HUNT, NOMBRE_PRENSA}
 FUENTES_REDDIT = {NOMBRE_REDDIT_IDEAS, NOMBRE_REDDIT_NEGOCIO}
 
 
-def crear_conector(fuente: Fuente) -> Conector:
+def crear_conector(fuente: Fuente, urls_conocidas: set[str] | None = None) -> Conector:
     config = json.loads(fuente.config_acceso)
 
     if fuente.nombre in FUENTES_RSS_SIMPLES:
         return ConectorRSS(config["urls"])
 
     if fuente.nombre == NOMBRE_GOOGLE_NEWS:
-        return ConectorGoogleNews(config["consultas"])
+        return ConectorGoogleNews(config["consultas"], urls_conocidas=urls_conocidas)
 
     if fuente.nombre == NOMBRE_APPLE:
         return ConectorAppleAppStore(

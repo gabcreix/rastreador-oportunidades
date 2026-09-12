@@ -10,7 +10,7 @@ import sys
 from sqlmodel import Session, select
 
 from app.db import engine, init_db
-from app.models import Fuente
+from app.models import Captura, Fuente
 from app.pipeline.ingesta.base import guardar_capturas
 from app.pipeline.ingesta.factory import crear_conector
 
@@ -25,7 +25,10 @@ def rastrear(nombre_fuente: str) -> int:
                 "Ejecuta antes `python -m scripts.seed`."
             )
 
-        conector = crear_conector(fuente)
+        urls_conocidas = set(
+            session.exec(select(Captura.url_original).where(Captura.fuente_id == fuente.id))
+        )
+        conector = crear_conector(fuente, urls_conocidas=urls_conocidas)
         items = conector.fetch()
         nuevas = guardar_capturas(session, fuente, items)
         print(f"{fuente.nombre}: {len(items)} items recibidos, {nuevas} Capturas nuevas guardadas.")

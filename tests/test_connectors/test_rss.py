@@ -66,7 +66,10 @@ def test_conector_google_news_sustituye_el_resumen_por_el_articulo_completo(monk
     assert "Ojalá existiera una app que hiciera X" not in items[0].contenido_bruto
 
 
-def test_conector_google_news_usa_la_url_decodificada_como_url_original(monkeypatch):
+def test_conector_google_news_url_original_es_el_enlace_del_feed_no_el_decodificado(monkeypatch):
+    # url_original se queda con el enlace de Google (estable entre rastreos,
+    # y un navegador sí lo resuelve): la URL decodificada solo se usa para
+    # poder descargar y extraer el artículo, no se persiste.
     monkeypatch.setattr(
         "app.pipeline.ingesta.google_news.resolver_y_extraer",
         lambda url: ("https://medio.example/real", "Texto del artículo."),
@@ -76,7 +79,27 @@ def test_conector_google_news_usa_la_url_decodificada_como_url_original(monkeypa
 
     items = conector.fetch()
 
-    assert items[0].url_original == "https://medio.example/real"
+    assert items[0].url_original == "https://example.com/post/1"
+
+
+def test_conector_google_news_se_salta_urls_ya_conocidas(monkeypatch):
+    llamadas = []
+    monkeypatch.setattr(
+        "app.pipeline.ingesta.google_news.resolver_y_extraer",
+        lambda url: llamadas.append(url) or (url, "Texto del artículo."),
+    )
+    conector = ConectorGoogleNews(
+        consultas=[{"q": "x", "idiomas": ["es-ES"]}],
+        pausa_segundos=0,
+        urls_conocidas={"https://example.com/post/1"},
+    )
+    conector.urls = [FEED_XML]
+
+    items = conector.fetch()
+
+    # post/1 ya era conocida: ni se decodifica/extrae ni aparece en el resultado.
+    assert llamadas == ["https://example.com/post/2"]
+    assert [item.url_original for item in items] == ["https://example.com/post/2"]
 
 
 def test_conector_google_news_cae_al_resumen_limpio_si_no_se_puede_extraer(monkeypatch):
