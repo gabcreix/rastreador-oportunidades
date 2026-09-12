@@ -1,9 +1,18 @@
+import socket
+
 import httpx
 import trafilatura
 from googlenewsdecoder import gnewsdecoder
 
 _UA = "RastreadorOportunidades/1.0 (proyecto personal; contacto: gabcreix@gmail.com)"
 _TIMEOUT = 15.0
+# googlenewsdecoder hace su petición interna con `requests.get(url, proxies=...)`
+# SIN timeout: si Google (o algo intermedio) no responde, se cuelga para
+# siempre y no hay forma de limitarlo desde su API pública. Como último
+# recurso, se fija el timeout por defecto de los sockets mientras se la llama
+# (afecta a requests/urllib3 cuando ellos no pasan uno explícito, que es
+# justo lo que le falta a esta librería).
+_TIMEOUT_DECODIFICACION = 15.0
 
 
 def _resolver_url_real(url: str) -> str:
@@ -15,12 +24,17 @@ def _resolver_url_real(url: str) -> str:
     """
     if "news.google.com" not in url:
         return url
+
+    timeout_previo = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(_TIMEOUT_DECODIFICACION)
     try:
         resultado = gnewsdecoder(url, interval=1)
         if resultado.get("status") and resultado.get("decoded_url"):
             return resultado["decoded_url"]
     except Exception:
         pass
+    finally:
+        socket.setdefaulttimeout(timeout_previo)
     return url
 
 

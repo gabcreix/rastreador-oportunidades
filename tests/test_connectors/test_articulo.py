@@ -1,3 +1,5 @@
+import socket
+
 import httpx
 
 from app.pipeline.ingesta.articulo import resolver_y_extraer
@@ -67,3 +69,23 @@ def test_resolver_y_extraer_usa_url_original_si_falla_la_decodificacion(monkeypa
 
     assert url_final == "https://news.google.com/rss/articles/CBMi..."
     assert texto is None
+
+
+def test_resolver_y_extraer_acota_con_timeout_la_llamada_a_gnewsdecoder(monkeypatch, httpx_mock):
+    # googlenewsdecoder llama a requests.get(...) sin timeout propio: si Google
+    # no responde se queda colgado para siempre. Se cubre con el timeout por
+    # defecto de los sockets mientras dura la llamada, y se restaura después.
+    timeouts_vistos = []
+    timeout_previo = socket.getdefaulttimeout()
+
+    def _decoder_falso(url, interval=1):
+        timeouts_vistos.append(socket.getdefaulttimeout())
+        return {"status": True, "decoded_url": "https://medio.example/real"}
+
+    monkeypatch.setattr("app.pipeline.ingesta.articulo.gnewsdecoder", _decoder_falso)
+    httpx_mock.add_response(url="https://medio.example/real", html=HTML_ARTICULO)
+
+    resolver_y_extraer("https://news.google.com/rss/articles/CBMi...")
+
+    assert timeouts_vistos == [15.0]
+    assert socket.getdefaulttimeout() == timeout_previo
